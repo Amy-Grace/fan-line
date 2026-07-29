@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FanLine — Broadcast</title>
+<link rel="stylesheet" href="css\style.css">
+</head>
+<body>
+<nav>
+  <a href="index.html">Home</a>
+  <a href="fans.html">Fans</a>
+  <a href="broadcast.html">Broadcast</a>
+</nav>
+
+<div class="wrap">
+  <h1>Broadcast</h1>
+  <div class="sub">Send an SMS update to every fan on <span id="artistNameLabel">—</span>'s fan line</div>
+
+  <div class="panel">
+    <h2>Artist</h2>
+    <select id="artistSelect"></select>
+    <div id="artistCode" class="code-badge" style="display:none;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Compose message</h2>
+    <textarea id="messageBox" placeholder="New single drops Friday! 🎶"></textarea>
+    <div class="row" style="margin-top:10px;">
+      <button id="sendBtn" onclick="handleSend()">Send to all fans</button>
+      <span id="charCount" style="color:var(--muted); font-size:12px;"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>History</h2>
+    <ul id="broadcastList" class="scroll"><li class="empty">No broadcasts sent yet</li></ul>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js\app.js"></script>
+<script>
+let artists = [];
+let currentArtistId = null;
+
+function updateCodeBadge() {
+  const artist = artists.find(a => a.id == currentArtistId);
+  const badge = document.getElementById('artistCode');
+  if (artist) {
+    badge.style.display = 'inline-block';
+    badge.textContent = `Fans text: JOIN ${artist.code}`;
+    document.getElementById('artistNameLabel').textContent = artist.name;
+  }
+}
+
+async function refresh() {
+  if (!currentArtistId) return;
+  const broadcasts = await fetchBroadcasts(currentArtistId);
+  const list = document.getElementById('broadcastList');
+  list.innerHTML = broadcasts.length
+    ? broadcasts.map(b => `<li><span class="primary">${b.message}</span><span>${b.recipient_count} fans · ${new Date(b.sent_at).toLocaleString()}</span></li>`).join('')
+    : '<li class="empty">No broadcasts sent yet</li>';
+}
+
+document.getElementById('messageBox').addEventListener('input', (e) => {
+  const len = e.target.value.length;
+  document.getElementById('charCount').textContent = `${len} chars (${Math.ceil(len / 160) || 1} SMS segment${len > 160 ? 's' : ''})`;
+});
+
+async function handleSend() {
+  const message = document.getElementById('messageBox').value.trim();
+  if (!message || !currentArtistId) return;
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  const data = await sendBroadcastRequest(currentArtistId, message);
+  if (data.success) {
+    showToast(`Sent to ${data.sentTo} fans!`);
+    document.getElementById('messageBox').value = '';
+    refresh();
+  } else {
+    showToast(data.error || 'Send failed');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Send to all fans';
+}
+
+async function boot() {
+  artists = await initArtistSelector((id) => {
+    currentArtistId = id;
+    updateCodeBadge();
+    refresh();
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
