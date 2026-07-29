@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FanLine — Home</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+  <a href="index.html">Home</a>
+  <a href="fans.html">Fans</a>
+  <a href="broadcast.html">Broadcast</a>
+</nav>
+
+<div class="wrap">
+  <h1>🎵 FanLine</h1>
+  <div class="sub">SMS fan clubs powered by Africa's Talking</div>
+
+  <div class="panel">
+    <h2>Select Artist</h2>
+    <select id="artistSelect"></select>
+    <div id="artistCode" class="code-badge" style="display:none;"></div>
+    <div class="new-artist-form">
+      <input id="newArtistName" placeholder="New artist name" />
+      <input id="newArtistCode" placeholder="Code e.g. WAVY01" />
+      <button onclick="handleCreateArtist()">Add</button>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat">
+      <div class="num" id="fanCount">0</div>
+      <div class="label">Fans joined</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="broadcastCount">0</div>
+      <div class="label">Broadcasts sent</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Latest broadcast</h2>
+    <ul id="latestBroadcast"><li class="empty">No broadcasts sent yet</li></ul>
+    <div style="margin-top:12px;">
+      <a href="broadcast.html"><button>Send a broadcast →</button></a>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js\app.js"></script>
+<script>
+let artists = [];
+let currentArtistId = null;
+
+async function refresh() {
+  if (!currentArtistId) return;
+  const [fans, broadcasts] = await Promise.all([
+    fetchFans(currentArtistId),
+    fetchBroadcasts(currentArtistId)
+  ]);
+  document.getElementById('fanCount').textContent = fans.length;
+  document.getElementById('broadcastCount').textContent = broadcasts.length;
+
+  const latest = document.getElementById('latestBroadcast');
+  latest.innerHTML = broadcasts.length
+    ? `<li><span class="primary">${broadcasts[0].message}</span><span>${broadcasts[0].recipient_count} fans</span></li>`
+    : '<li class="empty">No broadcasts sent yet</li>';
+}
+
+function updateCodeBadge() {
+  const artist = artists.find(a => a.id == currentArtistId);
+  const badge = document.getElementById('artistCode');
+  if (artist) {
+    badge.style.display = 'inline-block';
+    badge.textContent = `Fans text: JOIN ${artist.code}`;
+  }
+}
+
+async function handleCreateArtist() {
+  const name = document.getElementById('newArtistName').value.trim();
+  const code = document.getElementById('newArtistCode').value.trim();
+  if (!name || !code) return;
+  const data = await createArtist(name, code);
+  if (data.error) {
+    showToast(data.error);
+  } else {
+    document.getElementById('newArtistName').value = '';
+    document.getElementById('newArtistCode').value = '';
+    showToast(`Added ${name}`);
+    boot();
+  }
+}
+
+async function boot() {
+  artists = await initArtistSelector((id) => {
+    currentArtistId = id;
+    updateCodeBadge();
+    refresh();
+  });
+}
+
+boot();
+setInterval(refresh, 5000); // live update during demo if a fan texts in
+</script>
+</body>
+</html>
