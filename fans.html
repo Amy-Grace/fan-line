@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FanLine — Fans</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+  <a href="index.html">Home</a>
+  <a href="fans.html">Fans</a>
+  <a href="broadcast.html">Broadcast</a>
+</nav>
+
+<div class="wrap">
+  <h1>Fans</h1>
+  <div class="sub">Everyone subscribed to <span id="artistNameLabel">—</span>'s fan line</div>
+
+  <div class="panel">
+    <h2>Switch artist</h2>
+    <select id="artistSelect"></select>
+    <div id="artistCode" class="code-badge" style="display:none;"></div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat">
+      <div class="num" id="fanCount">0</div>
+      <div class="label">Total fans</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>All fans</h2>
+    <ul id="fanList" class="scroll"><li class="empty">No fans yet — text JOIN &lt;code&gt; to join</li></ul>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js\app.js"></script>
+<script>
+let artists = [];
+let currentArtistId = null;
+
+function updateCodeBadge() {
+  const artist = artists.find(a => a.id == currentArtistId);
+  const badge = document.getElementById('artistCode');
+  if (artist) {
+    badge.style.display = 'inline-block';
+    badge.textContent = `Fans text: JOIN ${artist.code}`;
+    document.getElementById('artistNameLabel').textContent = artist.name;
+  }
+}
+
+async function refresh() {
+  if (!currentArtistId) return;
+  const fans = await fetchFans(currentArtistId);
+  document.getElementById('fanCount').textContent = fans.length;
+
+  const list = document.getElementById('fanList');
+  list.innerHTML = fans.length
+    ? fans.map(f => `<li><span class="primary">${f.phone}</span><span>${new Date(f.joined_at).toLocaleString()}</span></li>`).join('')
+    : '<li class="empty">No fans yet — text JOIN &lt;code&gt; to join</li>';
+}
+
+async function boot() {
+  artists = await initArtistSelector((id) => {
+    currentArtistId = id;
+    updateCodeBadge();
+    refresh();
+  });
+}
+
+boot();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
